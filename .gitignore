@@ -1,0 +1,4 @@
+payload.json
+*.json.bak
+node_modules/
+config.local.json

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>解く 案件ボード｜定例会議用</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23273540'/%3E%3Cpath d='M14 22h36M32 22v30M20 40c6-4 12-4 18 0' stroke='%23d9c9a8' stroke-width='5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f2ee; --panel:#ffffff; --ink:#21272c; --muted:#6b7480; --line:#e4e0d8;
+  --accent:#4a6472; --accent2:#33454f; --accent-soft:#e9eef1;
+  --brand:#9c5c34;
+  --shadow:0 1px 2px rgba(35,30,20,.05), 0 4px 14px rgba(35,30,20,.06);
+  --shadow-hover:0 2px 6px rgba(35,30,20,.07), 0 10px 26px rgba(35,30,20,.11);
+  --s-run:#0f9d78; --s-wait:#c2410c; --s-ball:#2563eb; --s-hold:#6b7280;
+  --s-done:#374151; --s-new:#a1a8b0;
+  --warn:#b45309; --warnbg:#fdf0d0; --over:#b91c1c; --overbg:#fbe0e0;
+  --ok:#0f9d78; --okbg:#e6f6f0;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#12151a; --panel:#1b2027; --ink:#e8eaee; --muted:#96a0ac; --line:#2b323b;
+    --accent:#8aa8b8; --accent2:#a9c3d0; --accent-soft:#1c262d; --brand:#d08a5c;
+    --shadow:0 1px 2px rgba(0,0,0,.30), 0 4px 14px rgba(0,0,0,.25);
+    --shadow-hover:0 2px 6px rgba(0,0,0,.35), 0 12px 28px rgba(0,0,0,.40);
+    --warnbg:#3a2e0c; --overbg:#3a1414; --okbg:#0e2a22; }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Segoe UI","Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body::before{content:"";position:fixed;inset:0 0 auto 0;height:3px;z-index:20;
+  background:linear-gradient(90deg,var(--accent2),var(--brand) 55%,var(--accent))}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* ---- 鍵あけ画面 ---- */
+#lock{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#lock .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:30px 28px;box-shadow:var(--shadow);width:100%;max-width:400px;text-align:center}
+#lock h1{font-size:20px;margin:0 0 4px;font-weight:750;letter-spacing:.01em}
+#lock h1 .mark{color:var(--brand)}
+#lock p{color:var(--muted);font-size:12.5px;margin:0 0 20px;line-height:1.6}
+#lock input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;
+  background:var(--bg);color:var(--ink);font-size:15px;text-align:center;letter-spacing:.06em}
+#lock input:focus{outline:none;border-color:var(--accent);background:var(--panel);
+  box-shadow:0 0 0 3px var(--accent-soft)}
+#lock button{margin-top:11px;width:100%;padding:11px;border:0;border-radius:10px;
+  background:var(--accent);color:#fff;font-size:14px;font-weight:650;cursor:pointer;transition:.14s}
+#lock button:hover{filter:brightness(1.08)}
+#lock button:disabled{opacity:.55;cursor:default}
+#lockmsg{margin-top:12px;font-size:12.5px;min-height:18px;color:var(--over)}
+#app{display:none}
+
+.wrap{max-width:1180px;margin:0 auto;padding:26px 20px 72px}
+header.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 3px}
+header.top h1{font-size:22px;margin:0;font-weight:750;letter-spacing:.01em}
+header.top h1 .mark{color:var(--brand)}
+header.top .sub{color:var(--muted);font-size:12px;letter-spacing:.02em}
+.meta{color:var(--muted);font-size:12px;margin:14px 0 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.meta .spacer{flex:1;min-width:8px}
+.meta button,.meta a.tool{border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  border-radius:8px;padding:5px 11px;font-size:12px;line-height:1;cursor:pointer;transition:.14s;
+  display:inline-flex;align-items:center;gap:5px}
+.meta button:hover,.meta a.tool:hover{border-color:var(--accent);color:var(--accent);text-decoration:none}
+
+/* ---- タブ ---- */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.tabs button{border:0;background:none;color:var(--muted);font-size:14px;font-weight:650;
+  padding:9px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.14s;
+  font-family:inherit}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--accent2);border-bottom-color:var(--brand)}
+.tab{display:none}
+.tab.on{display:block}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:11px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;box-shadow:var(--shadow)}
+.kpi .n{font-size:27px;font-weight:750;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .n small{font-size:13px;font-weight:600;color:var(--muted);margin-left:3px;letter-spacing:0}
+.kpi .l{font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:.02em}
+.kpi .d{font-size:10.5px;margin-top:2px;color:var(--muted);font-variant-numeric:tabular-nums}
+.kpi.warn{border-color:color-mix(in srgb,var(--warn) 32%,var(--line))}
+.kpi.warn .n{color:var(--warn)}
+.kpi.alert{border-color:color-mix(in srgb,var(--over) 36%,var(--line))}
+.kpi.alert .n{color:var(--over)}
+.kpi.ok{border-color:color-mix(in srgb,var(--ok) 32%,var(--line))}
+.kpi.ok .n{color:var(--ok)}
+
+.strip{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 15px;
+  margin-bottom:20px;box-shadow:var(--shadow)}
+.strip h3{margin:0 0 9px;font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.strip ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.strip li{display:flex;gap:11px;align-items:baseline;font-size:13px;line-height:1.45}
+.strip .d{flex:none;width:96px;font-variant-numeric:tabular-nums;font-weight:700;font-size:12px}
+.strip .d.over{color:var(--over)} .strip .d.soon{color:var(--warn)}
+.strip .nm{font-weight:600}
+.strip .ac{color:var(--muted);font-size:12px}
+.strip .none{color:var(--muted);font-size:12.5px}
+
+.filters{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  padding:12px 15px;margin-bottom:22px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.frow .lab{font-size:11px;color:var(--muted);width:52px;flex:none;font-weight:700}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;
+  padding:5px 13px;font-size:12px;line-height:1.3;cursor:pointer;user-select:none;transition:.14s}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chip.on:hover{color:#fff;filter:brightness(1.08)}
+.frow input.search{flex:1;min-width:180px;padding:7px 13px;border:1px solid var(--line);
+  border-radius:9px;background:var(--bg);color:var(--ink);font-size:13px;transition:.14s}
+.frow input.search::placeholder{color:var(--muted)}
+.frow input.search:focus{outline:none;border-color:var(--accent);background:var(--panel);
+  box-shadow:0 0 0 3px var(--accent-soft)}
+
+.group{margin-bottom:26px}
+.group h2,.sec h2{font-size:13px;font-weight:750;color:var(--accent2);margin:0 0 5px;letter-spacing:.01em;
+  padding-bottom:7px;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}
+.group h2::before,.sec h2::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--accent);flex:none}
+.group h2 .cnt,.sec h2 .cnt{color:var(--muted);font-weight:500;font-size:11px;font-variant-numeric:tabular-nums}
+.group .gnote,.sec .gnote{font-size:11.5px;color:var(--muted);margin:0 0 12px;padding-left:16px}
+.sec{margin-bottom:30px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:13px}
+.cards .next,.cards .recent,.cards .memo{max-width:78ch}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 15px 13px;
+  display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);
+  border-color:color-mix(in srgb,var(--accent) 28%,var(--line))}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--s-new)}
+.card.st-進行中::before{background:var(--s-run)}
+.card.st-結果待ち::before{background:var(--s-wait)}
+.card.st-相手ボール::before{background:var(--s-ball)}
+.card.st-保留::before{background:var(--s-hold)}
+.card.st-完了::before{background:var(--s-done)}
+.card.stalled::before{background:repeating-linear-gradient(180deg,var(--over) 0 7px,transparent 7px 13px)}
+.card .ttl{font-weight:700;font-size:14.5px;line-height:1.42;padding-left:6px;letter-spacing:.005em}
+.card .no{color:var(--muted);font-size:11px;font-weight:400;margin-left:6px;font-variant-numeric:tabular-nums}
+.badges{display:flex;gap:6px;flex-wrap:wrap;padding-left:6px}
+.badge{font-size:11px;padding:2px 9px;border-radius:999px;font-weight:600;white-space:nowrap;line-height:1.5}
+.b-st{color:#fff}
+.b-st.進行中{background:var(--s-run)} .b-st.結果待ち{background:var(--s-wait)}
+.b-st.相手ボール{background:var(--s-ball)} .b-st.保留{background:var(--s-hold)}
+.b-st.完了{background:var(--s-done)} .b-st.未着手{background:var(--s-new)}
+.b-flag{background:var(--overbg);color:var(--over);border:1px solid color-mix(in srgb,var(--over) 25%,transparent)}
+.b-src{background:var(--bg);color:var(--muted);border:1px solid var(--line);font-weight:500}
+.row2{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-left:6px}
+.row2 b{color:var(--ink);font-weight:600}
+.next{padding-left:6px;font-size:13px;line-height:1.5}
+.next .k{font-size:9.5px;color:var(--muted);display:block;letter-spacing:.05em;font-weight:700;margin-bottom:1px}
+.deadline{display:inline-flex;align-items:center;gap:7px;padding-left:6px;font-variant-numeric:tabular-nums}
+.dl-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;font-variant-numeric:tabular-nums}
+.dl-pill.soon{background:var(--warnbg);color:var(--warn)}
+.dl-pill.over{background:var(--overbg);color:var(--over)}
+.dl-pill.norm{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.memo{font-size:11.5px;color:var(--muted);padding-left:6px}
+.recent{font-size:11.5px;color:var(--muted);padding-left:6px;border-top:1px dashed var(--line);padding-top:8px;line-height:1.5}
+.card .foot{display:flex;justify-content:space-between;align-items:center;padding-left:6px;margin-top:2px;
+  font-size:10.5px;color:var(--muted)}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:13px;padding:30px;
+  text-align:center;color:var(--muted);font-size:13px}
+
+details.closed{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  padding:12px 15px;box-shadow:var(--shadow);margin-bottom:22px}
+details.closed summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--accent2);list-style:none}
+details.closed summary::-webkit-details-marker{display:none}
+details.closed summary::before{content:"▸ ";color:var(--muted)}
+details.closed[open] summary::before{content:"▾ "}
+details.closed ul{margin:11px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+details.closed li{border-left:3px solid var(--line);padding-left:11px}
+details.closed li .n2{font-weight:650;font-size:13px}
+details.closed li .n2 span{color:var(--muted);font-weight:400;font-size:11px;margin-left:6px}
+details.closed li .r{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ---- 営業・広報 ---- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  padding:15px 16px;box-shadow:var(--shadow);margin-bottom:13px}
+.panel h3{margin:0 0 11px;font-size:12px;color:var(--muted);letter-spacing:.04em;font-weight:700}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.bar .bl{flex:none;width:104px;color:var(--muted);font-size:12px}
+.bar .bt{flex:1;height:16px;background:var(--bg);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.bar .bf{display:block;height:100%;background:var(--accent);border-radius:4px 0 0 4px;min-width:2px}
+.bar .bf.brand{background:var(--brand)}
+.bar .bv{flex:none;width:52px;text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.bar .bv small{color:var(--muted);font-weight:400}
+.bar.zero .bl,.bar.zero .bv{opacity:.5}
+
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t th{text-align:left;font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.03em;
+  padding:0 10px 7px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+table.t td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+table.t tr:last-child td{border-bottom:0}
+table.t td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t td.dt{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+.scroll{overflow-x:auto}
+.pill{font-size:10.5px;padding:1px 8px;border-radius:999px;font-weight:650;white-space:nowrap;
+  background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.pill.hot{background:var(--okbg);color:var(--ok);border-color:transparent}
+.pill.wait{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.note{font-size:11.5px;color:var(--muted);line-height:1.65;margin:10px 0 0}
+.note b{color:var(--ink)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:13px}
+
+footer.note2{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:11.5px;color:var(--muted);line-height:1.7}
+footer.note2 b{color:var(--ink)}
+@media print{
+  body::before{display:none}
+  .filters,.meta button,.tabs{display:none}
+  .tab{display:block !important}
+  .card,.panel,details.closed{break-inside:avoid;box-shadow:none}
+}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="box">
+    <h1><span class="mark">解く</span> 案件ボード</h1>
+    <p>定例会議用。合言葉を入れてください。</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="合言葉" autofocus>
+    <button id="go">開く</button>
+    <div id="lockmsg"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="wrap">
+
+  <header class="top">
+    <h1><span class="mark">解く</span> 案件ボード</h1>
+    <span class="sub">古民家再価値化事業（TOKU）／定例会議用</span>
+  </header>
+
+  <div class="meta">
+    <span id="updated">…</span>
+    <span class="spacer"></span>
+    <button onclick="load()">↻ 更新</button>
+    <button onclick="lockAgain()">🔒 閉じる</button>
+    <a class="tool" id="masterlink" href="#" target="_blank">案件マスタ ↗</a>
+    <a class="tool" href="https://motoki-design.github.io/sohatsu-board/" target="_blank">全体ボード ↗</a>
+  </div>
+
+  <div class="tabs">
+    <button id="tb-cases" class="on" onclick="showTab('cases')">案件</button>
+    <button id="tb-sales" onclick="showTab('sales')">営業・広報</button>
+  </div>
+
+  <div id="tab-cases" class="tab on">
+    <div class="kpis" id="kpis"></div>
+    <div class="strip" id="strip"></div>
+    <div class="filters" id="filters"></div>
+    <div id="board"></div>
+    <details class="closed" id="closedbox"></details>
+  </div>
+
+  <div id="tab-sales" class="tab"></div>
+
+  <footer class="note2" id="foot"></footer>
+
+</div>
+</div>
+
+<script>
+/* ============================================================
+   解く 案件ボード（合言葉で復号してから描画する）
+
+   ・案件データ … 事業創発室 案件マスタ（GSheet）を gviz で毎回読む
+   ・予約／広報 … payload.json を refresh.js で更新 → build.js が暗号化して埋め込む
+   ・このファイルに平文は入っていない
+   ============================================================ */
+
+const BLOB = /*__BLOB__*/null;
+const BUILT_AT = /*__BUILT_AT__*/"";
+let P = null;              // 復号したデータ
+const ST_ORDER = ["進行中","相手ボール","結果待ち","未着手","保留","完了"];
+let RAW = [], F = { group:new Set(), st:new Set(), q:"" };
+
+/* ---------- 鍵あけ ---------- */
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function decrypt(pass){
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt:b64(BLOB.kdf.salt), iterations:BLOB.kdf.iter, hash:BLOB.kdf.hash },
+    base, { name:"AES-GCM", length:256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv:b64(BLOB.iv) }, key, b64(BLOB.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function tryUnlock(pass, quiet){
+  const msg = document.getElementById('lockmsg');
+  const btn = document.getElementById('go');
+  if(!pass){ msg.textContent = "合言葉を入れてください"; return false; }
+  btn.disabled = true; if(!quiet) msg.textContent = "確認中…";
+  try{
+    P = await decrypt(pass);
+    try{ sessionStorage.setItem('toku_k', pass); }catch(e){}
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    boot();
+    return true;
+  }catch(e){
+    msg.textContent = quiet ? "" : "合言葉が違います";
+    btn.disabled = false;
+    return false;
+  }
+}
+
+function lockAgain(){
+  try{ sessionStorage.removeItem('toku_k'); }catch(e){}
+  location.reload();
+}
+
+document.getElementById('go').addEventListener('click', () => tryUnlock(document.getElementById('pw').value, false));
+document.getElementById('pw').addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('go').click(); });
+(function(){
+  let k = null;
+  try{ k = sessionStorage.getItem('toku_k'); }catch(e){}
+  if(k) tryUnlock(k, true).then(ok => { if(!ok) document.getElementById('go').disabled = false; });
+})();
+
+/* ---------- 共通 ---------- */
+function esc(s){ return (s||"").replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function nf(n){ return (n==null || n==='') ? '—' : Number(n).toLocaleString('ja-JP'); }
+
+function daysLeft(txt){
+  if(!txt) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const y = now.getFullYear();
+  const iso = String(txt).match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(iso) return Math.round((new Date(+iso[1], +iso[2]-1, +iso[3]) - now)/86400000);
+  let m, d;
+  const mm = String(txt).match(/(\d{1,2})\s*[\/月]\s*(\d{1,2})/);
+  if(mm){ m = +mm[1]; d = +mm[2]; }
+  else{
+    const mv = String(txt).match(/(\d{1,2})\s*月\s*(上旬|中旬|下旬)?/);
+    if(mv){ m = +mv[1]; d = mv[2]==='上旬'?5 : mv[2]==='下旬'?25 : 15; }
+    else return null;
+  }
+  let t = new Date(y, m-1, d);
+  if((t-now)/86400000 < -120) t = new Date(y+1, m-1, d);
+  return Math.round((t-now)/86400000);
+}
+
+function parseCSV(t){
+  const rows=[]; let row=[], f="", q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=""; }
+    else if(c==='\n'){ row.push(f); rows.push(row); row=[]; f=""; }
+    else if(c!=='\r') f+=c;
+  }
+  if(f!==''||row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+
+function showTab(name){
+  ['cases','sales'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('on', n===name);
+    document.getElementById('tb-'+n).classList.toggle('on', n===name);
+  });
+}
+
+function boot(){
+  document.getElementById('masterlink').href = P.master_url || '#';
+  renderSales();
+  renderFoot();
+  load();
+}
+
+/* ---------- 案件タブ ---------- */
+async function load(){
+  document.getElementById('updated').textContent = '読み込み中…';
+  const CSV = "https://docs.google.com/spreadsheets/d/" + P.sheet_id +
+              "/gviz/tq?tqx=out:csv&range=A1:M200";
+  try{
+    const r = await fetch(CSV + "&_=" + Date.now());
+    const rows = parseCSV(await r.text());
+    const head = rows[0], idx = {};
+    head.forEach((h,i) => idx[h.trim()] = i);
+    const g = (row,name) => (idx[name]!=null && row[idx[name]]!=null) ? row[idx[name]].trim() : "";
+    const fromSheet = rows.slice(1)
+      .filter(row => g(row,"業務名") && P.toku[g(row,"案件番号")])
+      .map(row => {
+        const cfg = P.toku[g(row,"案件番号")];
+        return {
+          group:cfg.group, flag:cfg.flag||"", no:g(row,"案件番号"), name:g(row,"業務名"),
+          owner:g(row,"主担当"), term:g(row,"工期"), memo:g(row,"備考"),
+          link:g(row,"関連リンク"), members:g(row,"関与メンバー"),
+          st:g(row,"状態")||"未着手", next:g(row,"次アクション"),
+          due:g(row,"期限"), recent:g(row,"直近の動き"), upd:g(row,"更新日"), src:"マスタ"
+        };
+      });
+    const missing = Object.keys(P.toku).filter(n => !fromSheet.some(r => r.no===n));
+    RAW = [...fromSheet, ...(P.extra||[]).map(e => ({ ...e, src:"このページ", flag:e.flag||"" }))];
+    const t = new Date();
+    document.getElementById('updated').textContent =
+      "最終取得 " + t.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) +
+      "｜案件 " + RAW.length + "件" +
+      (missing.length ? "｜⚠ マスタに見つからない番号: " + missing.join(", ") : "");
+    buildFilters(); render();
+  }catch(e){
+    document.getElementById('updated').textContent = "取得失敗: " + e.message + "（マスタの共有設定を確認してください）";
+  }
+}
+
+function buildFilters(){
+  const gs = P.groups.map(x=>x[0]).filter(gr => RAW.some(r => r.group===gr));
+  const sts = [...new Set(RAW.map(r=>r.st))].sort((a,b)=>ST_ORDER.indexOf(a)-ST_ORDER.indexOf(b));
+  const chips = (arr,key) => arr.map(v =>
+    `<span class="chip ${F[key].has(v)?'on':''}" onclick="tog('${key}','${v.replace(/'/g,"")}')">${esc(v)}</span>`).join('');
+  document.getElementById('filters').innerHTML = `
+    <div class="frow"><span class="lab">区分</span>${chips(gs,'group')}</div>
+    <div class="frow"><span class="lab">状態</span>${chips(sts,'st')}</div>
+    <div class="frow"><span class="lab">検索</span>
+      <input class="search" id="q" placeholder="案件名・次アクション・直近の動き…" value="${esc(F.q)}"></div>`;
+  document.getElementById('q').addEventListener('input', e => { F.q = e.target.value; render(); });
+}
+function tog(key,v){ F[key].has(v) ? F[key].delete(v) : F[key].add(v); buildFilters(); render(); }
+
+function pass(r){
+  if(F.group.size && !F.group.has(r.group)) return false;
+  if(F.st.size && !F.st.has(r.st)) return false;
+  if(F.q){
+    const q = F.q.toLowerCase();
+    if(!((r.name+r.next+(r.members||"")+r.recent+(r.owner||"")+r.no).toLowerCase().includes(q))) return false;
+  }
+  return true;
+}
+
+function linkHtml(u){ return /^https?:\/\//.test(u||"") ? `<a href="${esc(u)}" target="_blank">関連リンク ↗</a>` : ""; }
+
+function dueHtml(r){
+  if(!r.due) return "";
+  const dl = daysLeft(r.due);
+  let pill = "";
+  if(dl!=null){
+    const cls = dl<0?'over' : dl<=7?'soon':'norm';
+    const label = dl<0?`期限超過 ${-dl}日` : dl===0?'本日' : `残${dl}日`;
+    pill = `<span class="dl-pill ${cls}">${label}</span>`;
+  }
+  return `<div class="deadline">${pill}<span style="font-size:12px">${esc(r.due)}</span></div>`;
+}
+
+function card(r){
+  return `<div class="card st-${esc(r.st)} ${r.flag?'stalled':''}">
+    <div class="ttl">${esc(r.name)}<span class="no">${esc(r.no)}</span></div>
+    <div class="badges">
+      <span class="badge b-st ${esc(r.st)}">${esc(r.st)}</span>
+      ${r.flag?`<span class="badge b-flag">${esc(r.flag)}</span>`:''}
+      ${r.src==="このページ"?`<span class="badge b-src">マスタ外</span>`:''}
+    </div>
+    <div class="row2">
+      <span>主担当 <b>${esc(r.owner)||'—'}</b></span>
+      ${r.members?`<span>関与 <b>${esc(r.members)}</b></span>`:''}
+      ${r.term?`<span>工期 <b>${esc(r.term)}</b></span>`:''}
+    </div>
+    ${r.next?`<div class="next"><span class="k">次アクション</span>${esc(r.next)}</div>`:''}
+    ${dueHtml(r)}
+    ${r.memo?`<div class="memo">${esc(r.memo)}</div>`:''}
+    ${r.recent?`<div class="recent">${esc(r.recent)}</div>`:''}
+    <div class="foot"><span>${r.upd?'更新 '+esc(r.upd):''}</span>${linkHtml(r.link)}</div>
+  </div>`;
+}
+
+function render(){
+  const board = document.getElementById('board');
+  const list = RAW.filter(pass);
+  renderKpis(RAW); renderStrip(RAW); renderClosed();
+  if(!list.length){ board.innerHTML = '<div class="empty">該当する案件がありません</div>'; return; }
+  const byG = {}; list.forEach(r => { (byG[r.group] = byG[r.group]||[]).push(r); });
+  const known = P.groups.map(x=>x[0]);
+  const order = [...P.groups.filter(x => byG[x[0]]), ...Object.keys(byG).filter(k => !known.includes(k)).map(k => [k,""])];
+  board.innerHTML = order.map(([name,note]) => {
+    const items = byG[name].sort((a,b) => {
+      const da = daysLeft(a.due), db = daysLeft(b.due);
+      if(da==null && db==null) return 0; if(da==null) return 1; if(db==null) return -1; return da-db;
+    });
+    return `<div class="group"><h2>${esc(name)}<span class="cnt">${items.length}件</span></h2>
+      ${note?`<p class="gnote">${esc(note)}</p>`:''}
+      <div class="cards">${items.map(card).join('')}</div></div>`;
+  }).join('');
+}
+
+function renderStrip(all){
+  const withDue = all.map(r => ({ r, d:daysLeft(r.due) })).filter(x => x.d!=null).sort((a,b)=>a.d-b.d).slice(0,6);
+  const el = document.getElementById('strip');
+  if(!withDue.length){ el.innerHTML = '<h3>期限の近い順</h3><div class="none">期限の入っている案件がありません</div>'; return; }
+  el.innerHTML = '<h3>期限の近い順</h3><ol>' + withDue.map(({r,d}) => {
+    const cls = d<0?'over' : d<=7?'soon':'';
+    const lab = d<0?`超過 ${-d}日` : d===0?'本日' : `残 ${d}日`;
+    return `<li><span class="d ${cls}">${lab}</span>
+      <span><span class="nm">${esc(r.name)}</span>
+      <span class="ac">／${esc(r.due)}｜${esc((r.next||'').slice(0,46))}${(r.next||'').length>46?'…':''}</span></span></li>`;
+  }).join('') + '</ol>';
+}
+
+function renderClosed(){
+  const el = document.getElementById('closedbox');
+  if(el.dataset.done) return;
+  el.dataset.done = "1";
+  el.innerHTML = `<summary>クローズ・欠番（${(P.closed||[]).length}件）</summary><ul>` +
+    (P.closed||[]).map(c => `<li><div class="n2">${esc(c.name)}<span>${esc(c.no)}</span></div>
+      <div class="r">${esc(c.reason)}</div></li>`).join('') + `</ul>`;
+}
+
+function renderKpis(all){
+  const cnt = s => all.filter(r => r.st===s).length;
+  const soon = all.filter(r => { const d = daysLeft(r.due); return d!=null && d>=0 && d<=7; }).length;
+  const over = all.filter(r => { const d = daysLeft(r.due); return d!=null && d<0; }).length;
+  const stalled = all.filter(r => r.flag).length;
+  const K = [
+    { n:all.length, l:'解く案件 合計' },
+    { n:cnt('進行中'), l:'進行中' },
+    { n:cnt('結果待ち'), l:'相手待ち' },
+    { n:stalled, l:'動いていない', cls: stalled?'alert':'' },
+    { n:soon, l:'期限7日以内', cls: soon?'warn':'' },
+    { n:over, l:'期限超過', cls: over?'alert':'' },
+  ];
+  document.getElementById('kpis').innerHTML = K.map(k =>
+    `<div class="kpi ${k.cls||''}"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+}
+
+/* ---------- 営業・広報タブ ---------- */
+function bars(obj, opts){
+  const o = opts||{};
+  const keys = o.order || Object.keys(obj);
+  const max = Math.max(1, ...keys.map(k => Number(obj[k]||0)));
+  return '<div class="bars">' + keys.map(k => {
+    const v = Number(obj[k]||0);
+    return `<div class="bar ${v?'':'zero'}"><span class="bl">${esc(k)}</span>
+      <span class="bt"><span class="bf ${o.brand?'brand':''}" style="width:${v/max*100}%"></span></span>
+      <span class="bv">${v}${o.unit?`<small>${o.unit}</small>`:''}</span></div>`;
+  }).join('') + '</div>';
+}
+
+function renderSales(){
+  const R = P.reservation || {}, E = P.event || {}, PR = P.pr || {};
+  const dl = daysLeft(E.start);
+  const phone = (P.phone_inquiries || []);
+  const delta = (PR.sessions!=null && PR.prev_sessions!=null) ? PR.sessions - PR.prev_sessions : null;
+  const ownedDelta = (PR.owned_total!=null && PR.owned_prev!=null) ? PR.owned_total - PR.owned_prev : null;
+
+  const kpi = [
+    { n:R.form_count ?? '—', l:'内覧会 申込（フォーム）', d: R.people_total!=null ? `のべ ${R.people_total}名` : '', cls: (R.form_count||0)>0?'ok':'warn' },
+    { n:phone.length, l:'内覧会 問い合わせ（電話）', d:'フォームに乗らない分', cls:'' },
+    { n: dl!=null ? dl : '—', l:'開催まで', d: E.period||'', cls: (dl!=null && dl<=14)?'warn':'' },
+    { n: nf(PR.sessions), l:'サイト セッション', d: delta!=null ? `前期間 ${nf(PR.prev_sessions)}（${delta>=0?'+':''}${delta}）` : '' },
+    { n: nf(PR.owned_total), l:'自社導線からの流入', d: PR.owned_share!=null ? `全体の ${PR.owned_share}%` + (ownedDelta!=null?`／${ownedDelta>=0?'+':''}${ownedDelta}`:'') : '' },
+    { n:(P.media||[]).length, l:'メディア掲載 累計', d:'取材進行 ' + (P.media_pipeline||[]).length + '件' },
+  ];
+
+  const dayKeys = E.days || Object.keys(R.by_day||{});
+  const statusPill = s => `<span class="pill ${s==='確定'?'hot':'wait'}">${esc(s)}</span>`;
+
+  const resvTable = (R.entries||[]).length ? `<div class="scroll"><table class="t">
+      <tr><th>申込</th><th>第1希望</th><th>人数</th><th>業種・立場</th><th>検討の状況</th><th>知った経路</th><th>来場</th><th>確定</th><th>当日聞きたいこと</th></tr>
+      ${R.entries.map(e => `<tr>
+        <td class="dt">${esc(e.at)}</td>
+        <td class="num">${esc(e.day)}<br><span style="color:var(--muted)">${esc(e.time)}</span></td>
+        <td class="num">${e.people}名</td>
+        <td>${esc(e.industry)}</td>
+        <td>${esc(e.stage)}</td>
+        <td>${esc(e.source)}</td>
+        <td>${esc(e.access)}</td>
+        <td>${statusPill(e.status)}</td>
+        <td>${esc(e.interest) || '<span style="color:var(--muted)">—</span>'}</td>
+      </tr>`).join('')}
+    </table></div>` : '<div class="empty">申込はまだありません</div>';
+
+  const relNotes = P.release_notes || {};
+  const releases = (PR.releases||[]).slice().sort((a,b) => (a.date<b.date?1:-1));
+
+  document.getElementById('tab-sales').innerHTML = `
+    <div class="kpis">${kpi.map(k => `<div class="kpi ${k.cls||''}">
+      <div class="n">${k.n}</div><div class="l">${k.l}</div>${k.d?`<div class="d">${esc(k.d)}</div>`:''}</div>`).join('')}</div>
+
+    <div class="sec">
+      <h2>内覧会の予約<span class="cnt">${esc(E.name||'')}</span></h2>
+      <p class="gnote">${esc(E.period||'')}／${esc(E.place||'')}。${esc(E.note||'')}</p>
+      <div class="two">
+        <div class="panel"><h3>希望日の分布（第1希望）</h3>${bars(
+          Object.fromEntries(dayKeys.map(d => [d, (R.by_day||{})[d]||0])), {brand:true, unit:'件'})}</div>
+        <div class="panel"><h3>業種・立場</h3>${bars(R.by_industry||{}, {unit:'件'})}
+          <h3 style="margin-top:14px">検討の状況</h3>${bars(R.by_stage||{}, {unit:'件'})}
+          <h3 style="margin-top:14px">知った経路</h3>${bars(R.by_source||{}, {unit:'件'})}</div>
+      </div>
+      <div class="panel"><h3>申込の明細</h3>${resvTable}
+        <p class="note"><b>氏名・会社名・メール・電話はこのページに載せていません。</b>公開URLに置くページのため、集計と匿名の項目だけを持っています。連絡先は回答シート「輪島屋内覧会_予約一覧」を直接ご覧ください。<br>
+        集計時点 <b>${esc(R.as_of||'—')}</b>／シートの全行 ${R.sheet_rows_total ?? '—'} 件のうち、2026-08-01 より前のテスト申込 ${R.excluded_as_test ?? 0} 件を除外。確定状況はシートのQ列を手入力すると反映されます。</p>
+      </div>
+      ${phone.length ? `<div class="panel"><h3>フォームを経由しない問い合わせ</h3>
+        <div class="scroll"><table class="t">
+          <tr><th>日付</th><th>相手</th><th>経路</th><th>内容</th></tr>
+          ${phone.map(p => `<tr><td class="dt">${esc(p.date)}</td><td>${esc(p.who)}</td>
+            <td>${esc(p.channel)}</td><td>${esc(p.note)}</td></tr>`).join('')}
+        </table></div>
+        <p class="note">紙面の読者は申込フォームではなく現地の電話にかかるため、フォームの申込一覧だけでは反響の総数を数えられません。ここは手入力です（payload.json の <code>phone_inquiries</code>）。</p></div>` : ''}
+    </div>
+
+    <div class="sec">
+      <h2>広報<span class="cnt">リリース ${releases.length}本／掲載 ${(P.media||[]).length}件</span></h2>
+      <div class="panel"><h3>PR TIMES リリース</h3>
+        <div class="scroll"><table class="t">
+          <tr><th>配信日</th><th>リリース</th><th>メモ</th></tr>
+          ${releases.map(r => `<tr><td class="dt">${esc(r.date)}</td><td><b>${esc(r.label)}</b></td>
+            <td>${esc(relNotes[r.date]||'')}</td></tr>`).join('')}
+        </table></div>
+        ${P.releases_note ? `<p class="note">${esc(P.releases_note)}</p>` : ''}
+      </div>
+      <div class="panel"><h3>メディア掲載実績</h3>
+        <div class="scroll"><table class="t">
+          <tr><th>掲載日</th><th>媒体</th><th>面</th><th>見出し</th><th>記者</th></tr>
+          ${(P.media||[]).slice().sort((a,b)=>(a.date<b.date?1:-1)).map(m => `<tr>
+            <td class="dt">${esc(m.date)}</td><td>${esc(m.outlet)}</td><td class="num">${esc(m.page)}</td>
+            <td>${esc(m.title)}</td><td>${esc(m.writer)}</td></tr>`).join('')}
+        </table></div>
+      </div>
+      <div class="panel"><h3>取材の進行中</h3>
+        <div class="scroll"><table class="t">
+          <tr><th>状態</th><th>媒体</th><th>メモ</th></tr>
+          ${(P.media_pipeline||[]).map(m => `<tr><td><span class="pill">${esc(m.state)}</span></td>
+            <td>${esc(m.outlet)}</td><td>${esc(m.note)}</td></tr>`).join('')}
+        </table></div>
+        ${P.media_rule ? `<p class="note"><b>二次利用の線引き</b>｜${esc(P.media_rule)}</p>` : ''}
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>HPアクセス<span class="cnt">${esc((PR.period&&PR.period.label)||'')} ${esc((PR.period&&PR.period.start)||'')}〜${esc((PR.period&&PR.period.end)||'')}</span></h2>
+      <p class="gnote">数値の正本は「解く HPアクセス分析ダッシュボード」。ここは見出しだけを持っています。</p>
+      <div class="two">
+        <div class="panel"><h3>自社で仕掛けた導線（流入元）</h3>
+          ${bars(Object.fromEntries((PR.owned_rows||[]).map(r => [r.label, r.sessions])), {brand:true})}
+          <p class="note">合計 <b>${nf(PR.owned_total)}</b> セッション＝サイト全体の <b>${PR.owned_share ?? '—'}%</b>。note→サイト流入 <b>${nf(PR.note_inbound)}</b>／お知らせページのPV <b>${nf(PR.news_pv)}</b>。</p>
+        </div>
+        <div class="panel"><h3>チャネル別</h3>
+          ${bars(Object.fromEntries((PR.channels||[]).map(c => [c.name, c.sessions])))}
+          <p class="note">生成時点 <b>${esc(PR.as_of||'—')}</b>。
+          <a href="${esc(PR.dashboard_url||'#')}" target="_blank">HPアクセス分析ダッシュボードを開く ↗</a></p>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFoot(){
+  document.getElementById('foot').innerHTML = `
+    <b>このページの作り</b>｜合言葉で復号してから描画します。ソースには暗号文しか入っていません（生成 ${esc(BUILT_AT)}）。<br>
+    <b>案件</b>は事業創発室 案件マスタ（GSheet）を毎回読み込むので、マスタを直せば「↻ 更新」で即反映されます。未採番の案件とクローズ案件はこのページ内に持っています。<br>
+    <b>予約・広報</b>は <code>refresh.js</code> で集計し直し、<code>build.js</code> で暗号化して埋め込む方式です。定例の前に更新してください。<br>
+    <b>注意</b>｜案件マスタ自体はリンクを知っていれば閲覧できる設定のままです（全体ボードが公開しているため）。この合言葉で守れるのは 予約集計・広報実績・未採番案件・区分と停滞フラグです。`;
+}
+</script>
+</body>
+</html>
