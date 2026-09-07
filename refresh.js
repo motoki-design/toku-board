@@ -5,13 +5,17 @@
  *   node refresh.js
  *
  * 読むもの
+ *   0. 事業創発室 案件マスタ（GSheet）… サービスアカウントで読む
+ *      → ★2026-09-07 改修。以前はブラウザが gviz で毎回読んでいたため、公開ページに
+ *        マスタのシートIDが出ており、そのシートが「リンクを知っている全員が閲覧可」だった。
+ *        サーバ側で読んで payload に入れ、build.js が暗号化する形へ移した（結 0905便）。
  *   1. 輪島屋内覧会_予約一覧（GSheet・非公開）… サービスアカウントで読む
  *      → 氏名・ふりがな・会社名・メール・電話は一切payload に書かない（集計と匿名項目のみ）
  *   2. 解く HPアクセス分析ダッシュボード（公開ページ）… 主要指標だけ抜く
  *      → 数値の正本はあちら。ここでは見出しだけ持ち、詳細はリンクで飛ばす
  *
  * 書くもの
- *   payload.json の reservation / pr セクションのみ（他のセクションは触らない）
+ *   payload.json の projects / reservation / pr セクションのみ（他のセクションは触らない）
  */
 const fs = require('fs');
 const path = require('path');
@@ -70,6 +74,29 @@ function tally(arr) {
 function peopleOf(s) {
   const m = String(s || '').match(/(\d+)/);
   return m ? +m[1] : 1;
+}
+
+/**
+ * 案件マスタを読み、13列をそのまま payload に置く。
+ * ★シートIDは payload.json の sheet_id を使う（payload はリポジトリ外なのでIDは漏れない）。
+ *   環境変数 TOKU_MASTER_SHEET_ID / config.local.json の masterSheetId でも上書きできる。
+ * ★列名は見出し名でマッピングする側（ページ）に任せ、ここでは行をそのまま持つ。
+ */
+async function projects(masterId) {
+  const rows = await readRange(SA_PATH, masterId, 'A1:M200');
+  if (!rows.length) throw new Error('案件マスタが空です');
+  const head = rows[0].map(h => (h || '').trim());
+  const need = ['種別', '案件番号', '業務名', '状態', '次アクション', '期限'];
+  const miss = need.filter(n => !head.includes(n));
+  if (miss.length) throw new Error('案件マスタの見出しに ' + miss.join('・') + ' がありません');
+  // 業務名の無い行（空行・注記行）は落とす
+  const iName = head.indexOf('業務名');
+  const body = rows.slice(1).filter(r => r && (r[iName] || '').trim());
+  return {
+    as_of: fmt(new Date()),
+    head,
+    rows: body.map(r => head.map((_, i) => (r[i] == null ? '' : String(r[i])))),
+  };
 }
 
 async function reservation() {
@@ -175,6 +202,23 @@ async function webAccess() {
 
 (async () => {
   const p = JSON.parse(fs.readFileSync(PAYLOAD, 'utf8'));
+
+  const masterId = process.env.TOKU_MASTER_SHEET_ID || CFG.masterSheetId || p.sheet_id;
+  if (!masterId) {
+    console.error('[refresh] 案件マスタのシートIDが分かりません。'
+      + 'payload.json の sheet_id か、TOKU_MASTER_SHEET_ID を渡してください。');
+    process.exitCode = 1;
+  } else {
+    try {
+      p.projects = await projects(masterId);
+      console.log(`案件マスタ: ${p.projects.rows.length}行を取り込み（${p.projects.as_of} 時点）`);
+    } catch (e) {
+      //: ★落ちても payload の前回値は残す。ページは「◯時点」が古いまま出るので、
+      //   黙って空になることはない
+      console.error('案件マスタの取得に失敗:', e.message);
+      process.exitCode = 1;
+    }
+  }
 
   try {
     p.reservation = { ...(p.reservation || {}), ...(await reservation()) };

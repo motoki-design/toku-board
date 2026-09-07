@@ -239,7 +239,7 @@ footer.note2 b{color:var(--ink)}
   <div class="meta">
     <span id="updated">…</span>
     <span class="spacer"></span>
-    <button onclick="load()">↻ 更新</button>
+    <span id="asof" class="sub"></span>
     <button onclick="lockAgain()">🔒 閉じる</button>
     <a class="tool" id="masterlink" href="#" target="_blank">案件マスタ ↗</a>
     <a class="tool" href="https://motoki-design.github.io/sohatsu-board/" target="_blank">全体ボード ↗</a>
@@ -269,9 +269,15 @@ footer.note2 b{color:var(--ink)}
 /* ============================================================
    解く 案件ボード（合言葉で復号してから描画する）
 
-   ・案件データ … 事業創発室 案件マスタ（GSheet）を gviz で毎回読む
-   ・予約／広報 … payload.json を refresh.js で更新 → build.js が暗号化して埋め込む
-   ・このファイルに平文は入っていない
+   ・案件データ … refresh.js がサーバ側で案件マスタ（GSheet）を読み payload に入れる
+   ・予約／広報 … 同じく payload.json を refresh.js で更新
+   ・build.js が payload をまるごと暗号化して埋め込む
+   ・このファイルに平文は入っていない（★シートIDも出ない）
+
+   ★2026-09-07 改修（結 0905便）：以前はブラウザが gviz で案件マスタを毎回読んでいた。
+     そのためシートIDが公開ページに出ており、マスタが「リンクを知っている全員が閲覧可」
+     である限り、誰でも主担当・次アクションまで読めた。サーバ側取得へ移し、
+     引き換えに「マスタを直す→↻で即反映」が失われた（1日1回のバッチと手動更新で補う）。
    ============================================================ */
 
 const BLOB = /*__BLOB__*/null;
@@ -348,19 +354,8 @@ function daysLeft(txt){
   return Math.round((t-now)/86400000);
 }
 
-function parseCSV(t){
-  const rows=[]; let row=[], f="", q=false;
-  for(let i=0;i<t.length;i++){
-    const c=t[i];
-    if(q){ if(c==='"'){ if(t[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
-    else if(c==='"') q=true;
-    else if(c===','){ row.push(f); f=""; }
-    else if(c==='\n'){ row.push(f); rows.push(row); row=[]; f=""; }
-    else if(c!=='\r') f+=c;
-  }
-  if(f!==''||row.length){ row.push(f); rows.push(row); }
-  return rows;
-}
+/* parseCSV は 2026-09-07 の改修で不要になった（gviz を止めたため）*/
+
 
 function showTab(name){
   ['cases','sales'].forEach(n => {
@@ -377,39 +372,42 @@ function boot(){
 }
 
 /* ---------- 案件タブ ---------- */
-async function load(){
-  document.getElementById('updated').textContent = '読み込み中…';
-  const CSV = "https://docs.google.com/spreadsheets/d/" + P.sheet_id +
-              "/gviz/tq?tqx=out:csv&range=A1:M200";
-  try{
-    const r = await fetch(CSV + "&_=" + Date.now());
-    const rows = parseCSV(await r.text());
-    const head = rows[0], idx = {};
-    head.forEach((h,i) => idx[h.trim()] = i);
-    const g = (row,name) => (idx[name]!=null && row[idx[name]]!=null) ? row[idx[name]].trim() : "";
-    const fromSheet = rows.slice(1)
-      .filter(row => g(row,"業務名") && P.toku[g(row,"案件番号")])
-      .map(row => {
-        const cfg = P.toku[g(row,"案件番号")];
-        return {
-          group:cfg.group, flag:cfg.flag||"", no:g(row,"案件番号"), name:g(row,"業務名"),
-          owner:g(row,"主担当"), term:g(row,"工期"), memo:g(row,"備考"),
-          link:g(row,"関連リンク"), members:g(row,"関与メンバー"),
-          st:g(row,"状態")||"未着手", next:g(row,"次アクション"),
-          due:g(row,"期限"), recent:g(row,"直近の動き"), upd:g(row,"更新日"), src:"マスタ"
-        };
-      });
-    const missing = Object.keys(P.toku).filter(n => !fromSheet.some(r => r.no===n));
-    RAW = [...fromSheet, ...(P.extra||[]).map(e => ({ ...e, src:"このページ", flag:e.flag||"" }))];
-    const t = new Date();
+/**
+ * ★ネットワークを叩かない。案件は refresh.js が取り込んだ P.projects から組む。
+ *   見出し名でのマッピングは従来どおり（マスタ側で列名を変えたら気づけるように）。
+ */
+function load(){
+  const pj = P.projects;
+  const asof = document.getElementById('asof');
+  if(!pj || !pj.rows || !pj.rows.length){
     document.getElementById('updated').textContent =
-      "最終取得 " + t.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) +
-      "｜案件 " + RAW.length + "件" +
-      (missing.length ? "｜⚠ マスタに見つからない番号: " + missing.join(", ") : "");
+      "案件データが payload にありません（refresh.js → build.js を流し直してください）";
+    RAW = (P.extra||[]).map(e => ({ ...e, src:"このページ", flag:e.flag||"" }));
     buildFilters(); render();
-  }catch(e){
-    document.getElementById('updated').textContent = "取得失敗: " + e.message + "（マスタの共有設定を確認してください）";
+    return;
   }
+  const idx = {};
+  pj.head.forEach((h,i) => idx[String(h).trim()] = i);
+  const g = (row,name) => (idx[name]!=null && row[idx[name]]!=null) ? String(row[idx[name]]).trim() : "";
+  const fromSheet = pj.rows
+    .filter(row => g(row,"業務名") && P.toku[g(row,"案件番号")])
+    .map(row => {
+      const cfg = P.toku[g(row,"案件番号")];
+      return {
+        group:cfg.group, flag:cfg.flag||"", no:g(row,"案件番号"), name:g(row,"業務名"),
+        owner:g(row,"主担当"), term:g(row,"工期"), memo:g(row,"備考"),
+        link:g(row,"関連リンク"), members:g(row,"関与メンバー"),
+        st:g(row,"状態")||"未着手", next:g(row,"次アクション"),
+        due:g(row,"期限"), recent:g(row,"直近の動き"), upd:g(row,"更新日"), src:"マスタ"
+      };
+    });
+  const missing = Object.keys(P.toku).filter(n => !fromSheet.some(r => r.no===n));
+  RAW = [...fromSheet, ...(P.extra||[]).map(e => ({ ...e, src:"このページ", flag:e.flag||"" }))];
+  document.getElementById('updated').textContent =
+    "案件 " + RAW.length + "件" +
+    (missing.length ? "｜⚠ マスタに見つからない番号: " + missing.join(", ") : "");
+  if(asof) asof.textContent = "マスタ取得 " + pj.as_of + " 時点";
+  buildFilters(); render();
 }
 
 function buildFilters(){
@@ -654,7 +652,7 @@ function renderSales(){
 function renderFoot(){
   document.getElementById('foot').innerHTML = `
     <b>このページの作り</b>｜合言葉で復号してから描画します。ソースには暗号文しか入っていません（生成 ${esc(BUILT_AT)}）。<br>
-    <b>案件</b>は事業創発室 案件マスタ（GSheet）を毎回読み込むので、マスタを直せば「↻ 更新」で即反映されます。未採番の案件とクローズ案件はこのページ内に持っています。<br>
+    <b>案件</b>は事業創発室 案件マスタ（GSheet）を <code>refresh.js</code> がサーバ側で読み、暗号化して埋め込んでいます。ヘッダの「マスタ取得 ◯時点」がその時刻です。<b>マスタを直しても、このページは再ビルドするまで変わりません</b>（平日18:30のバッチで1日1回・定例の直前は手で流します）。未採番の案件とクローズ案件はこのページ内に持っています。<br>
     <b>予約・広報</b>は <code>refresh.js</code> で集計し直し、<code>build.js</code> で暗号化して埋め込む方式です。定例の前に更新してください。<br>
     <b>注意</b>｜案件マスタ自体はリンクを知っていれば閲覧できる設定のままです（全体ボードが公開しているため）。この合言葉で守れるのは 予約集計・広報実績・未採番案件・区分と停滞フラグです。`;
 }
