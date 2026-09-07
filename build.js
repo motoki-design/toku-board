@@ -29,9 +29,14 @@ const PAYLOAD = process.env.TOKU_PAYLOAD
 const TEMPLATE = path.join(__dirname, 'template.html');
 const OUT = path.join(__dirname, 'index.html');
 
-const pass = process.env.TOKU_PASS;
+/** 合言葉＝環境変数 → config.local.json の "pass"（gitignore済み・無人バッチ用） */
+const pass = process.env.TOKU_PASS || (function () {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')).pass;
+  } catch (e) { return null; }
+})();
 if (!pass) {
-  console.error('合言葉が指定されていません。\n  TOKU_PASS=\'合言葉\' node build.js');
+  console.error('合言葉が指定されていません。\n  TOKU_PASS=\'合言葉\' node build.js\n  （または config.local.json の \"pass\" に書く）');
   process.exit(1);
 }
 if (!fs.existsSync(PAYLOAD)) {
