@@ -106,6 +106,10 @@ async function reservation() {
   const col = name => head.findIndex(h => (h || '').trim() === name);
   const IDX = {
     ts: 0,
+    //: ★同一性を見るためだけに読む列。payload には書かない（公開URLに置くため）
+    mail: col('メールアドレス'),
+    tel: col('電話番号（当日連絡用）'),
+    kana: col('ふりがな'),
     industry: col('業種・お立場'),
     people: col('参加人数'),
     day: col('第1希望日'),
@@ -128,8 +132,39 @@ async function reservation() {
   kept.sort((a, b) => a.t - b.t);
 
   const g = (r, k) => (IDX[k] >= 0 ? (r[IDX[k]] || '').trim() : '');
+
+  /**
+   * ★フォームの行数は件数ではない（2026-09-07 結の指摘・実測で確認）。
+   *
+   * 日程を変えたい人はフォームをもう一度出す。同じ予約が2行になり、件数と人数が
+   * 二重に数えられる。実測＝小玉さんが 9/1 14:30（9/27午前）と 9/3 18:26（9/26午後）
+   * の2行で、これを3件5名と数えていた。正しくは2組3名。
+   *
+   * **同じ人の行は、いちばん新しい1行だけを採る。**同一性はメール→電話→ふりがなの
+   * 順で見る（メールは表記揺れが少ない）。どれも空の行は畳まず個別に残す
+   * ——**推測で人をまとめない**。畳んだ数は `superseded` として出す（黙って減らさない）。
+   */
+  const idKey = r => {
+    const mail = g(r, 'mail').toLowerCase();
+    if (mail) return 'm:' + mail;
+    const tel = g(r, 'tel').replace(/[^0-9]/g, '');
+    if (tel) return 't:' + tel;
+    const kana = g(r, 'kana').replace(/[\s\u3000]/g, '');
+    if (kana) return 'k:' + kana;
+    return null;
+  };
+  const latest = new Map();
+  const singles = [];
+  for (const e of kept) {
+    const k = idKey(e.r);
+    if (k === null) { singles.push(e); continue; }
+    latest.set(k, e);                  // keptは古い順なので、後の行が残る
+  }
+  const superseded = kept.length - (latest.size + singles.length);
+  const unique = [...latest.values(), ...singles].sort((a, b) => a.t - b.t);
+
   // ★氏名・ふりがな・会社名・メール・電話は載せない（公開URLに置くため）
-  const entries = kept.map(({ r, t }) => ({
+  const entries = unique.map(({ r, t }) => ({
     at: fmt(t),
     day: g(r, 'day'),
     time: g(r, 'time'),
@@ -147,6 +182,8 @@ async function reservation() {
     as_of: fmt(new Date()),
     sheet_rows_total: all.length,
     excluded_as_test: dropped.length,
+    //: ★同じ人の古い行（日程変更で二重になった分）。件数の内訳として出す
+    superseded: superseded,
     form_count: entries.length,
     people_total: entries.reduce((s, e) => s + e.people, 0),
     last_at: entries.length ? entries[entries.length - 1].at : null,
@@ -222,8 +259,9 @@ async function webAccess() {
 
   try {
     p.reservation = { ...(p.reservation || {}), ...(await reservation()) };
-    console.log(`予約: 実申込 ${p.reservation.form_count}件／のべ ${p.reservation.people_total}名`
-      + `（テスト除外 ${p.reservation.excluded_as_test}件・最終申込 ${p.reservation.last_at}）`);
+    console.log(`予約: 実申込 ${p.reservation.form_count}組／のべ ${p.reservation.people_total}名`
+      + `（テスト除外 ${p.reservation.excluded_as_test}件・日程変更で畳んだ古い行 `
+      + `${p.reservation.superseded}件・最終申込 ${p.reservation.last_at}）`);
   } catch (e) {
     console.error('予約の取得に失敗:', e.message);
     process.exitCode = 1;

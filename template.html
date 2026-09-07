@@ -548,7 +548,7 @@ function renderSales(){
   const ownedDelta = (PR.owned_total!=null && PR.owned_prev!=null) ? PR.owned_total - PR.owned_prev : null;
 
   const kpi = [
-    { n:R.form_count ?? '—', l:'内覧会 申込（フォーム）', d: R.people_total!=null ? `のべ ${R.people_total}名` : '', cls: (R.form_count||0)>0?'ok':'warn' },
+    { n:R.form_count ?? '—', l:'内覧会 申込（フォーム・組）', d: R.people_total!=null ? `のべ ${R.people_total}名` : '', cls: (R.form_count||0)>0?'ok':'warn' },
     { n:phone.length, l:'内覧会 問い合わせ（電話）', d:'フォームに乗らない分', cls:'' },
     { n: dl!=null ? dl : '—', l:'開催まで', d: E.period||'', cls: (dl!=null && dl<=14)?'warn':'' },
     { n: nf(PR.sessions), l:'サイト セッション', d: delta!=null ? `前期間 ${nf(PR.prev_sessions)}（${delta>=0?'+':''}${delta}）` : '' },
@@ -593,7 +593,8 @@ function renderSales(){
       </div>
       <div class="panel"><h3>申込の明細</h3>${resvTable}
         <p class="note"><b>氏名・会社名・メール・電話はこのページに載せていません。</b>公開URLに置くページのため、集計と匿名の項目だけを持っています。連絡先は回答シート「輪島屋内覧会_予約一覧」を直接ご覧ください。<br>
-        集計時点 <b>${esc(R.as_of||'—')}</b>／シートの全行 ${R.sheet_rows_total ?? '—'} 件のうち、2026-08-01 より前のテスト申込 ${R.excluded_as_test ?? 0} 件を除外。確定状況はシートのQ列を手入力すると反映されます。</p>
+        集計時点 <b>${esc(R.as_of||'—')}</b>／シートの全行 ${R.sheet_rows_total ?? '—'} 件のうち、2026-08-01 より前のテスト申込 ${R.excluded_as_test ?? 0} 件を除外。${(R.superseded||0) > 0 ? `<b>日程変更でフォームを出し直した古い行 ${R.superseded} 件を畳み、同じ人を1組として数えています</b>（★フォームの行数は申込の件数ではありません）。` : ''}確定状況はシートのQ列を手入力すると反映されます。<br>
+        ★ここに出るのは<b>フォームからの申込だけ</b>です。電話・記者・掲示板からの来場は別経路なので、当日の来場組数にはそれを足してください。</p>
       </div>
       ${phone.length ? `<div class="panel"><h3>フォームを経由しない問い合わせ</h3>
         <div class="scroll"><table class="t">
