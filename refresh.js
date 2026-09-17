@@ -121,6 +121,10 @@ async function reservation() {
     source: col('この内覧会を何で知りましたか'),
     status: col('確定状況'),
     memo: col('備考'),
+    // 2026-09-16 ダッシュボードの導線ファネル用（列が無ければ -1 → 空欄扱い）
+    visited: col('来場'),
+    consult: col('個別相談希望'),
+    consult_when: col('希望日時'),
   };
 
   const all = rows.slice(1).filter(r => r && r[0]);
@@ -176,7 +180,11 @@ async function reservation() {
     access: g(r, 'access'),
     interest: g(r, 'interest').replace(/\s+/g, ' ').trim(),
     status: g(r, 'status') || '未確定',
+    visited: g(r, 'visited'),          // ○ / × / 空
+    consult: g(r, 'consult'),          // ○ / 空
+    consult_when: g(r, 'consult_when'),
   }));
+  const yes = v => /^(○|〇|◯|o|O|yes|はい|1)$/.test((v || '').trim());
 
   return {
     as_of: fmt(new Date()),
@@ -192,6 +200,9 @@ async function reservation() {
     by_stage: tally(entries.map(e => e.stage)),
     by_source: tally(entries.map(e => e.source)),
     by_status: tally(entries.map(e => e.status)),
+    // 導線ファネル（来場・個別相談希望）：列が無い間は null（ダッシュボードは「未設定」表示）
+    visited_count: IDX.visited >= 0 ? entries.filter(e => yes(e.visited)).length : null,
+    consult_count: IDX.consult >= 0 ? entries.filter(e => yes(e.consult)).length : null,
     entries,
   };
 }
